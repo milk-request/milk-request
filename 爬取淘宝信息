@@ -1,0 +1,101 @@
+import time
+from selenium import webdriver
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+import re
+import json
+import csv
+class Taobao(object):
+    def __init__(self):
+        self.browser = webdriver.Chrome(executable_path=r"C:\Downloads\driver\chromedriver.exe")
+        self.wait = WebDriverWait(self.browser, 20)  # 设置等待时间为20秒
+        self.base_url ='https://www.taobao.com/'
+        self.keyword = 'python爬虫'  # 关键词
+        self.data_list = []#设置全局变量来存储数据
+    def run(self):
+        self.search()
+        self.get_data()
+        self.save()
+
+    def search(self):
+        try:
+            self.browser.get(self.base_url)  # 获取网页
+            input = self.wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="q"]')))  # 等到输入框加载出来
+
+            button = self.wait.until(
+                EC.element_to_be_clickable((By.XPATH, '//*[@id="J_TSearchForm"]/div[1]/button')))  # 等到搜索框加载出来
+
+            input.send_keys(self.keyword)  # 输入关键词
+
+            button.click()  # 模拟鼠标点击
+            total = self.wait.until(EC.presence_of_element_located(
+                (By.XPATH, '//*[@id="mainsrp-pager"]//div[@class="total"]'))).text  # 等到python爬虫页面的总页数加载出来
+
+            total = re.sub(r',|.', '', total)  # 发现总页数有逗号#数据清洗，将共100页后面的逗号去掉,淘宝里的是大写的逗号
+
+            print(total)
+
+            self.totalnum = int(re.compile('(\d+)').search(total).group(1))  # 只取出100这个数字
+
+        except TimeoutError:
+            self.search()
+
+    def get_data(self):
+        totalnum =self.totalnum   # 获取总页数的值，并且调用search获取第一页数据
+        num = 0
+        while num != 3:  # 这里我偷懒只爬取了3页
+            # while num != totalnum - 1:#首先进来的是第1页，共100页，所以只需要翻页99次
+            print("第%s页:" % str(num + 1))
+            self.browser.get('https://s.taobao.com/search?q=%s&s={}'.format(44 * num)%self.keyword)  # 用修改s属性的方式翻页
+
+            self.browser.implicitly_wait(10)  # 等待10秒
+
+            try:
+                lis = self.browser.find_elements_by_xpath('//div[@class = "items"]/div[@data-category="auctions"]')
+                for i in range(len(lis)):
+                    name = self.browser.find_elements_by_xpath(
+                        './/div[@class="pic"]/a[@class="pic-link J_ClickStat J_ItemPicA"]/img')[i].get_attribute('alt')
+                    # 获取书名,我是从图片那里的属性获取的书名，比较方便
+                    shopname =self.browser.find_elements_by_xpath(
+                        './/div[@class="shop"]/a[@class="shopname J_MouseEneterLeave J_ShopInfo"]/span[2]')[i].text
+                    # 获取店铺名
+                    price = self.browser.find_elements_by_xpath('.//div[@class="price g_price g_price-highlight"]/strong')[
+                        i].text
+                    # 获取价格
+                    paynum = self.browser.find_elements_by_xpath('.//div[@class="deal-cnt"]')[i].text
+                    # 获取付款人数
+
+                    data_dict = {}  # 定义一个字典存储数据
+                    data_dict["name"] = name
+                    data_dict["shopname"] = shopname
+                    data_dict["price"] = price
+                    data_dict["paynum"] = paynum
+
+                    self.data_list.append(data_dict)  # 将数据存入全局变量中
+            except TimeoutError:
+                pass
+            time.sleep(3)
+            num += 1  # 自增
+
+    def save(self):
+        content = json.dumps(self.data_list, ensure_ascii=False, indent=2)  # 把全局变量转化为json数据
+
+        with open("taobao.json", "a+", encoding="utf-8") as f:
+            f.write(content)
+            print("json文件写入成功")
+
+        with open('taobao.csv', 'w', encoding='utf_8_sig', newline='') as f:
+            # 表头
+            title = self.data_list[0].keys()
+            # 声明writer
+            writer = csv.DictWriter(f, title)
+            # 写入表头
+            writer.writeheader()
+            # 批量写入数据
+            writer.writerows(self.data_list)
+        print('csv文件写入完成')
+        self.browser.close()
+if __name__ == '__main__':
+    spider = Taobao()
+    spider.run()
