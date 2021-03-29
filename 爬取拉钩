@@ -1,0 +1,97 @@
+from selenium import webdriver
+from lxml import etree
+import re
+import time
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+import csv
+
+class LagouSpider(object):
+    keyword = 'python'#这里输入查找关键字
+    driver_path = r"C:\Downloads\driver\chromedriver.exe"#driver路径
+    def __init__(self):
+        self.driver=webdriver.Chrome(executable_path=LagouSpider.driver_path)#使用谷歌浏览器
+        self.url = 'https://www.lagou.com/jobs/list_%s?labelWords=&fromSearch=true&suginput='%LagouSpider.keyword#列表页url
+        self.positions = []#存储一页信息的全局变量
+
+    def run(self):
+        self.driver.get(self.url)#打开列表页
+        num = 1
+        while True:
+            WebDriverWait(driver=self.driver, timeout=10).until(EC.presence_of_all_elements_located(
+                (By.XPATH, "//div[@class='pager_container']/span[last()]")))  # 显示等待页面加载完全
+            source = self.driver.page_source#得到列表页源代码
+            self.parse_list_page(source)#将源代码传入函数中分析
+            self.story()#执行存储函数
+            print('存储好'+str(num)+'页')
+            try:
+                next_btn=self.driver.find_element_by_xpath("//div[@class='pager_container']//span[@class='pager_next ']")#定位下一页点击按钮
+                if "pager_next pager_next_disabled" in next_btn.get_attribute("class"):#如果到达最后一页则停止
+                    pass
+                else:
+                    self.driver.execute_script("arguments[0].click();", next_btn)
+                    num+=1
+            except:
+                print(source)
+            time.sleep(1)
+    def parse_list_page(self,source):
+        html = etree.HTML(source)
+        links=html.xpath("//a[@class='position_link']/@href")
+        for link in links:
+            self.request_detail_page(link)
+            time.sleep(1)
+
+    def request_detail_page(self,url):
+        # self.driver.get(url)
+        self.driver.execute_script("window.open('%s')"%url)#在新标签中打开url
+        self.driver.switch_to.window(self.driver.window_handles[1])#切换到职位url
+        WebDriverWait(self.driver,timeout=10).until(
+            EC.presence_of_all_elements_located((By.XPATH,"//h1[@class='name']"))
+        )#等待数据加载完全
+        source = self.driver.page_source
+        self.parse_detial_page(source)#将源代码传入下个函数
+        self.driver.close()#关闭职位url
+        self.driver.switch_to.window(self.driver.window_handles[0])#切换回到列表页
+
+    def parse_detial_page(self,source):
+        html = etree.HTML(source)
+        position_name = html.xpath("//h1[@class='name']/text()")[0]
+        job_request_spans = html.xpath('//dd[@class="job_request"]//span//text()')
+        salary = job_request_spans[0].strip()
+        city = job_request_spans[1].strip()
+        city = re.sub(r"[\s/]", '', city)
+        work_years = job_request_spans[2].strip()
+        work_years = re.sub(r"[\s/]", '', work_years)
+        eduction = job_request_spans[3].strip()
+        eduction = re.sub(r"[\s/]", '', eduction)
+        desc = " ".join(html.xpath("//dd[@class='job_bt']//text()")).strip()
+        company_name = html.xpath("//h3[@class='fl']/em//text()")[0].strip()
+        # print(desc)
+        position = {
+            'name':position_name,
+            'company_name':company_name,
+            'salary':salary,
+            'city':city,
+            'work_years':work_years,
+            'eduction':eduction,
+            'desc':re.sub('\n','',desc)
+        }
+
+        self.positions.append(position)#传入全局变量
+
+
+    def story(self):
+        with open('position.csv','a',encoding='utf_8_sig') as fp:
+            fileheaders = ['name','company_name','salary','city','work_years','eduction','desc']
+            writer = csv.DictWriter(fp, fieldnames=fileheaders)
+            writer.writeheader()
+            writer.writerows(self.positions)
+
+
+
+
+
+if __name__ == '__main__':
+    spyder = LagouSpider()
+    spyder.run()
