@@ -1,0 +1,42 @@
+import requests
+import re
+import subprocess
+def requeset_url(url):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36'}
+    response = requests.get(url, headers=headers).content.decode('utf-8')
+    return response
+
+def download_url(response,url):
+    urls=re.findall('"baseUrl":"(.+?)"',response)
+    urls2 = re.findall('"url":"(.+?)"', response)
+    for i in urls:
+        print(i)
+    headers={
+        'Referer':url,
+        'User-Agent':'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36',
+        'Range':'bytes=0-'
+    }
+
+    # if urls!=[]:
+    #     print(url.split('/')[-1] + '开始下载!')
+    #     with open('first.mp4', 'wb') as f:
+    #         f.write(requests.get(urls[0],headers=headers).content)
+    #     with open('second.mp3', 'wb') as f:
+    #         f.write(requests.get(urls[-1],headers=headers).content)
+    #     cmd = 'ffmpeg -i second.mp3 -i first.mp4 out.mp4'#合成
+    #     subprocess.call(cmd)
+    #     print('下载完成!')
+    # else:
+    #     print(url.split('/')[-1] + '开始下载!')
+    #     with open('third.flv', 'wb') as f:
+    #         f.write(requests.get(urls2[0], headers=headers).content)
+    #     print('下载完成!')
+
+def main():
+    url='https://www.bilibili.com/video/BV1m5411s7Q9?spm_id_from=333.851.b_7265706f7274466972737431.7'#这里换url
+    response=requeset_url(url)
+    download_url(response,url)
+
+if __name__ == '__main__':
+    main()
