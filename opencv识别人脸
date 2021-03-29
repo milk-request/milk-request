@@ -1,0 +1,21 @@
+import numpy as np
+import cv2
+
+# 人脸，特征数据，获取了人脸特征
+# 交给cv2的算法，算法就可以根据特征查到人脸
+huazai = cv2.imread('liudehua.jpg')
+# 加载图片后声明算法
+face_default = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')#声明算法代码，给什么样的特征就识别什么样的事物
+face_zone=face_default.detectMultiScale(huazai, scaleFactor=1.1, minNeighbors=5)#人脸检测代码
+print(face_zone)
+
+for x , y , w , h in face_zone:
+   #绘制矩形
+    cv2.rectangle(huazai,pt1=(x,y),pt2=(x+w,y+h),color=[0,0,255],thickness=2)#绘制人脸的区域
+   #绘制圆
+    cv2.circle(huazai,center=(x+w//2,y+h//2),radius=w//2,color=[0,255,0],thickness=2)
+
+
+cv2.imshow('star', huazai)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
