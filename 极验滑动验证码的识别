@@ -1,0 +1,54 @@
+'''
+模拟点击验证按钮
+识别滑动缺口位置
+模拟拖动滑块
+'''
+from selenium import webdriver
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from PIL import Image
+from io import BytesIO
+import time
+EMAIL = '1219534922@qq.com'
+PASSWORD = '123456'
+
+class GrakGeetest():
+    def __init__(self):
+        self.url='https://auth.geetest.com/login/'
+        self.browser = webdriver.Chrome(executable_path=r"C:\Downloads\driver\chromedriver.exe")
+        self.wait = WebDriverWait(self.browser,20)
+        self.email=EMAIL
+        self.password = PASSWORD
+
+    def get_geetest_button(self):
+        '''
+        获取初始验证按钮
+        :return :按钮对象
+        '''
+        button = self.wait.until(EC.element_to_be_clickable((By.CLASS_NAME,'geetest_radar_tip')))
+        return button
+
+    def get_screenshot(self):
+        '''
+        获取网页截图
+        :return: 截图对象
+        '''
+        screenshot = self.browser.get_screenshot_as_png()
+        screenshot=Image.open(BytesIO(screenshot))
+        return screenshot
+    def get_position(self):
+        '''
+        获取验证码位置
+        :return: 验证码元组
+        '''
+        img = self.wait.until(EC.presence_of_element_located((By.CLASS_NAME,'geetest_canvas_img geetest_absolute')))
+        time.sleep(2)
+        location=img.location
+        size=img.size
+        top,bottom,left,right=location['y'],location['y']+size['heigth'],location['x'],location['x']+size['width']
+        return (top,bottom,left,right)
+
+# if __name__ == '__main__':
+#     spider = GrakGeetest()
+#     print(spider.get_position()x`)
